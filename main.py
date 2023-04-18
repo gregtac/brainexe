@@ -760,6 +760,31 @@ class Timer:
         timer_rect.topright = (screen.get_width() - 10, 10)
         screen.blit(timer_text, timer_rect)
 
+    def save_time(self):
+        csv_file = "time_data.csv"
+        # Check if the CSV file exists, create it with a header if it doesn't
+        if not os.path.exists(csv_file):
+            with open(csv_file, 'w', newline='') as csvfile:
+                csv_writer = csv.writer(csvfile)
+                csv_writer.writerow(["id", "time"])
+
+        # Read the CSV file to find the previous id
+        last_id = 0
+        with open(csv_file, 'r', newline='') as csvfile:
+            csv_reader = csv.reader(csvfile)
+            for row in csv_reader:
+                if len(row) > 0 and row[0].isdigit():
+                    last_id = int(row[0])
+
+        # Increment the id
+        new_id = last_id + 1
+
+        # Save the time, id, and death count
+        with open(csv_file, 'a', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(
+                [new_id, f"{self.minutes:02d}:{self.seconds:02d}"])
+
 
 time = Timer()
 # create screen fades
@@ -767,23 +792,26 @@ intro_fade = ScreenFade(1, BLACK, 15)
 death_fade = ScreenFade(2, PINK, 15)
 
 # create buttons
-start_bttn = button.Button(47, 175, start_img, .80)
-options_bttn = button.Button(47, 280, options_img, .5)
-credits_bttn = button.Button(47, 350, credits_img, .5)
-quit_bttn = button.Button(47, 450, quit_img, 1)
+start_bttn = button.Button(
+    (sc_width//3) + 50, (sc_height - 225), start_img, .8)
+options_bttn = button.Button(
+    (sc_width//3) + 40, (sc_height - 135), options_img, .45)
+credits_bttn = button.Button(
+    (sc_width//2) + 200, (sc_height - 135), credits_img, .45)
+keys_bttn = button.Button(50, (sc_height - 135), controls_img, .45)
+quit_bttn = button.Button((sc_width//3) + 90, (sc_height - 85), quit_img, .6)
 music_bttn = button.Button(345, 200, music_on_img, .8)
-keys_bttn = button.Button(287.5, 300, controls_img, .5)
-back_bttn = button.Button(280, 380, back_img, 1)
+back_bttn = button.Button(280, 300, back_img, 1)
 done_bttn = button.Button(
-    sc_width // 2.8, sc_height - 75 * 2.3, back_img, 1)
+    sc_width // 2.8, sc_height - 225, back_img, 1)
 restart_button = button.Button(
-    sc_width // 2 - 100, sc_height // 2 - 50, restart_img, 1)
+    sc_width // 2 - 210, sc_height // 2 - 100, restart_img, 1)
 
 
 def overlay():
     # Draw a semi-transparent black background
     overlay = pygame.Surface((sc_width, sc_height))
-    overlay.set_alpha(200)
+    overlay.set_alpha(220)
     overlay.fill(BLACK)
     screen.blit(overlay, (0, 0))
 
@@ -795,7 +823,7 @@ def draw_options():
     font = pygame.font.SysFont("arialblack", 70)
     option_title = font.render("Settings", True, WHITE)
     option_rect = option_title.get_rect()
-    option_rect = ((sc_width//3) - 15, (sc_height - 75)//7)
+    option_rect = ((sc_width//3) - 25, (sc_height - 75)//7)
     screen.blit(option_title, option_rect)
 
 # This one draw the keybinds
@@ -807,7 +835,7 @@ def draw_keys():
     controls = {"Jump": "W", "Left": "A", "Right": "D", "Shoot": "Space"}
     key_font = pygame.font.SysFont("arialblack", 50)
     x = sc_width // 2
-    y = (sc_height - len(controls) * 75) // 2
+    y = (sc_height - len(controls) * 100) // 2
     for key, value in controls.items():
         text = key_font.render(f"{key}: {value}", True, WHITE)
         text_rect = text.get_rect()
@@ -827,8 +855,8 @@ def draw_credits():
     screen.blit(credit_title, credit_rect)
 
     # Same function as draw_keys / keybinds
-    credits = {"April Gem Leo Claudio": "Title", "John Jamel Dagoplo": "Title",
-               "Greg Tacuyan": "Title", "David Jarrold Villanueva": "Title"}
+    credits = {"April Gem Leo Claudio": "Programmer", "John Jamel Dagoplo": "UI Designer",
+               "Greg Tacuyan": "Lead Programmer", "David Jarrold Villanueva": "Art Director"}
     credits_font = pygame.font.SysFont("arialblack", 35)
     x = sc_width // 2
     y = (sc_height - len(credits) * 50) // 2
@@ -844,6 +872,8 @@ def draw_credits():
 # This just paused the background music not the stop it
 # So if you clicked it, it will just continue where it left off
 music_is_toggled = True
+
+bgm.pause()
 
 
 def music_toggle(toggle):
@@ -887,6 +917,36 @@ def pause_game():
         pygame.display.update()
 
 
+def win_screen():
+    win = True
+    time.pause()
+    while win:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    pygame.quit()
+                    quit()
+
+        overlay()
+        title_font = pygame.font.SysFont("arialblack", 70)
+        time_font = pygame.font.SysFont("arialblack", 50)
+        desc_font = pygame.font.SysFont("arialblack", 25)
+
+        draw_text("Congratulation", title_font, WHITE,
+                  (sc_width//10) + 35, (sc_height - 75)//5)
+        timer_text = f"Your Time: {time.minutes:02d}:{time.seconds:02d}"
+        draw_text(timer_text, time_font, WHITE,
+                  (sc_width//5) + 15, (sc_height - 75)//3)
+        draw_text("Press Q to Quit",
+                  desc_font, WHITE, (sc_width//5) + 150, (sc_height - 200)//1)
+
+        pygame.display.update()
+
+
 # create sprite groups
 bullet_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
@@ -923,7 +983,7 @@ while run:
         # draw menu
         screen.fill(BG)
         # add buttons
-        if start_bttn.draw(screen):
+        if start_bttn.draw(screen) and menu_state == "main":
             start_game = True
             start_intro = True
             time.start()
@@ -931,6 +991,8 @@ while run:
             menu_state = 'options'
         if credits_bttn.draw(screen):
             menu_state = 'credits'
+        if keys_bttn.draw(screen):
+            menu_state = "keys"
         if quit_bttn.draw(screen):
             run = False
 
@@ -942,15 +1004,14 @@ while run:
                 # change the value either True or False
                 music_is_toggled = not music_is_toggled
                 music_toggle(music_is_toggled)  # change yung image nung music
-            if keys_bttn.draw(screen):
-                menu_state = "keys"
+
             if back_bttn.draw(screen):
                 menu_state = "main"
 
         if menu_state == "keys":  # keybind window
             draw_keys()
             if done_bttn.draw(screen):
-                menu_state = "options"
+                menu_state = "main"
 
         if menu_state == "credits":  # credits window
             draw_credits()
@@ -1018,7 +1079,7 @@ while run:
                 level += 1
                 bg_scroll = 0
                 world_data = reset_level()
-                if level <= max_levels:
+                if level <= max_levels-2:
                     start_intro = True
                     # load in level data and create world
                     with open(f'level{level}_data.csv', newline='') as csvfile:
@@ -1028,6 +1089,9 @@ while run:
                                 world_data[x][y] = int(tile)
                     world = World()
                     player, health_bar = world.process_data(world_data)
+                else:
+                    time.save_time()
+                    win_screen()
 
         else:
             time.reset()

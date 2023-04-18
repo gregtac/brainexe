@@ -760,6 +760,31 @@ class Timer:
         timer_rect.topright = (screen.get_width() - 10, 10)
         screen.blit(timer_text, timer_rect)
 
+    def save_time(self):
+        csv_file = "time_data.csv"
+        # Check if the CSV file exists, create it with a header if it doesn't
+        if not os.path.exists(csv_file):
+            with open(csv_file, 'w', newline='') as csvfile:
+                csv_writer = csv.writer(csvfile)
+                csv_writer.writerow(["id", "time"])
+
+        # Read the CSV file to find the previous id
+        last_id = 0
+        with open(csv_file, 'r', newline='') as csvfile:
+            csv_reader = csv.reader(csvfile)
+            for row in csv_reader:
+                if len(row) > 0 and row[0].isdigit():
+                    last_id = int(row[0])
+
+        # Increment the id
+        new_id = last_id + 1
+
+        # Save the time, id, and death count
+        with open(csv_file, 'a', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(
+                [new_id, f"{self.minutes:02d}:{self.seconds:02d}"])
+
 
 time = Timer()
 # create screen fades
@@ -1028,6 +1053,8 @@ while run:
                                 world_data[x][y] = int(tile)
                     world = World()
                     player, health_bar = world.process_data(world_data)
+                else:
+                    time.save_time()
 
         else:
             time.reset()

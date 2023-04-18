@@ -912,6 +912,36 @@ def pause_game():
         pygame.display.update()
 
 
+def win_screen():
+    win = True
+    time.pause()
+    while win:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    pygame.quit()
+                    quit()
+
+        overlay()
+        title_font = pygame.font.SysFont("arialblack", 70)
+        time_font = pygame.font.SysFont("arialblack", 50)
+        desc_font = pygame.font.SysFont("arialblack", 25)
+
+        draw_text("Congratulation", title_font, WHITE,
+                  (sc_width//10) + 35, (sc_height - 75)//5)
+        timer_text = f"Your Time: {time.minutes:02d}:{time.seconds:02d}"
+        draw_text(timer_text, time_font, WHITE,
+                  (sc_width//5) + 15, (sc_height - 75)//3)
+        draw_text("Press Q to Quit",
+                  desc_font, WHITE, (sc_width//5) + 150, (sc_height - 200)//1)
+
+        pygame.display.update()
+
+
 # create sprite groups
 bullet_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
@@ -1043,7 +1073,7 @@ while run:
                 level += 1
                 bg_scroll = 0
                 world_data = reset_level()
-                if level <= max_levels:
+                if level <= max_levels-2:
                     start_intro = True
                     # load in level data and create world
                     with open(f'level{level}_data.csv', newline='') as csvfile:
@@ -1055,6 +1085,7 @@ while run:
                     player, health_bar = world.process_data(world_data)
                 else:
                     time.save_time()
+                    win_screen()
 
         else:
             time.reset()

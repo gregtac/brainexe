@@ -792,23 +792,26 @@ intro_fade = ScreenFade(1, BLACK, 15)
 death_fade = ScreenFade(2, PINK, 15)
 
 # create buttons
-start_bttn = button.Button(47, 175, start_img, .80)
-options_bttn = button.Button(47, 280, options_img, .5)
-credits_bttn = button.Button(47, 350, credits_img, .5)
-quit_bttn = button.Button(47, 450, quit_img, 1)
+start_bttn = button.Button(
+    (sc_width//3) + 50, (sc_height - 225), start_img, .8)
+options_bttn = button.Button(
+    (sc_width//3) + 40, (sc_height - 135), options_img, .45)
+credits_bttn = button.Button(
+    (sc_width//2) + 200, (sc_height - 135), credits_img, .45)
+keys_bttn = button.Button(50, (sc_height - 135), controls_img, .45)
+quit_bttn = button.Button((sc_width//3) + 90, (sc_height - 85), quit_img, .6)
 music_bttn = button.Button(345, 200, music_on_img, .8)
-keys_bttn = button.Button(287.5, 300, controls_img, .5)
-back_bttn = button.Button(280, 380, back_img, 1)
+back_bttn = button.Button(280, 300, back_img, 1)
 done_bttn = button.Button(
-    sc_width // 2.8, sc_height - 75 * 2.3, back_img, 1)
+    sc_width // 2.8, sc_height - 225, back_img, 1)
 restart_button = button.Button(
-    sc_width // 2 - 100, sc_height // 2 - 50, restart_img, 1)
+    sc_width // 2 - 210, sc_height // 2 - 100, restart_img, 1)
 
 
 def overlay():
     # Draw a semi-transparent black background
     overlay = pygame.Surface((sc_width, sc_height))
-    overlay.set_alpha(200)
+    overlay.set_alpha(220)
     overlay.fill(BLACK)
     screen.blit(overlay, (0, 0))
 
@@ -820,7 +823,7 @@ def draw_options():
     font = pygame.font.SysFont("arialblack", 70)
     option_title = font.render("Settings", True, WHITE)
     option_rect = option_title.get_rect()
-    option_rect = ((sc_width//3) - 15, (sc_height - 75)//7)
+    option_rect = ((sc_width//3) - 25, (sc_height - 75)//7)
     screen.blit(option_title, option_rect)
 
 # This one draw the keybinds
@@ -832,7 +835,7 @@ def draw_keys():
     controls = {"Jump": "W", "Left": "A", "Right": "D", "Shoot": "Space"}
     key_font = pygame.font.SysFont("arialblack", 50)
     x = sc_width // 2
-    y = (sc_height - len(controls) * 75) // 2
+    y = (sc_height - len(controls) * 100) // 2
     for key, value in controls.items():
         text = key_font.render(f"{key}: {value}", True, WHITE)
         text_rect = text.get_rect()
@@ -852,8 +855,8 @@ def draw_credits():
     screen.blit(credit_title, credit_rect)
 
     # Same function as draw_keys / keybinds
-    credits = {"April Gem Leo Claudio": "Title", "John Jamel Dagoplo": "Title",
-               "Greg Tacuyan": "Title", "David Jarrold Villanueva": "Title"}
+    credits = {"April Gem Leo Claudio": "Programmer", "John Jamel Dagoplo": "UI Designer",
+               "Greg Tacuyan": "Lead Programmer", "David Jarrold Villanueva": "Art Director"}
     credits_font = pygame.font.SysFont("arialblack", 35)
     x = sc_width // 2
     y = (sc_height - len(credits) * 50) // 2
@@ -869,6 +872,8 @@ def draw_credits():
 # This just paused the background music not the stop it
 # So if you clicked it, it will just continue where it left off
 music_is_toggled = True
+
+bgm.pause()
 
 
 def music_toggle(toggle):
@@ -978,7 +983,7 @@ while run:
         # draw menu
         screen.fill(BG)
         # add buttons
-        if start_bttn.draw(screen):
+        if start_bttn.draw(screen) and menu_state == "main":
             start_game = True
             start_intro = True
             time.start()
@@ -986,6 +991,8 @@ while run:
             menu_state = 'options'
         if credits_bttn.draw(screen):
             menu_state = 'credits'
+        if keys_bttn.draw(screen):
+            menu_state = "keys"
         if quit_bttn.draw(screen):
             run = False
 
@@ -997,15 +1004,14 @@ while run:
                 # change the value either True or False
                 music_is_toggled = not music_is_toggled
                 music_toggle(music_is_toggled)  # change yung image nung music
-            if keys_bttn.draw(screen):
-                menu_state = "keys"
+
             if back_bttn.draw(screen):
                 menu_state = "main"
 
         if menu_state == "keys":  # keybind window
             draw_keys()
             if done_bttn.draw(screen):
-                menu_state = "options"
+                menu_state = "main"
 
         if menu_state == "credits":  # credits window
             draw_credits()

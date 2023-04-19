@@ -5,6 +5,8 @@ import random
 import csv
 import button
 
+path = "C:\\Users\\third\\Desktop\\capstone"
+os.chdir(path)
 
 pygame.init()
 
@@ -24,7 +26,7 @@ SCROLL_THRESH = 200
 ROWS = 16
 COLS = 150
 TILE_SIZE = sc_height // ROWS
-TILE_TYPES = 8
+TILE_TYPES = 9
 max_levels = 3
 screen_scroll = 0
 bg_scroll = 0
@@ -38,9 +40,17 @@ m_left = False
 m_right = False
 shoot = False
 
+shot_fx = pygame.mixer.Sound('audio/shoot.mp3')
+shot_fx.set_volume(0.3)
+button_fx = pygame.mixer.Sound('audio/button.mp3')
+button_fx.set_volume(0.3)
+
 bgm_load = pygame.mixer.Sound('audio/ost.mp3')
 bgm = bgm_load.play(-1, 0, 500)
-pygame.mixer.Sound.set_volume(bgm_load, 0.3)
+pygame.mixer.Sound.set_volume(bgm_load, 0.2)
+bgm_2_load = pygame.mixer.Sound('audio/audio_bgm.mp3')
+bgm_2 = bgm_2_load.play(-1, 0, 500)
+pygame.mixer.Sound.set_volume(bgm_2_load, 0.2)
 
 # load images
 # button images
@@ -70,12 +80,15 @@ for x in range(TILE_TYPES):
 # bullet
 bullet_img = pygame.image.load('imgs/icons/bullet1.png').convert_alpha()
 bullet2_img = pygame.image.load('imgs/icons/bullet2.png').convert_alpha()
+bullet3_img = pygame.image.load('imgs/icons/bullet3.png').convert_alpha()
 # pick up boxes
 ammo_box_img = pygame.image.load('imgs/icons/ammo.png').convert_alpha()
 item_boxes = {
     'Ammo': ammo_box_img
 }
 
+background = pygame.image.load('./imgs/title_screen.png')
+background = pygame.transform.scale(background, (sc_width, sc_height))
 # colors
 BG = (144, 201, 120)
 RED = (255, 0, 0)
@@ -95,12 +108,11 @@ def draw_text(text, font, text_col, x, y):
 
 def draw_bg():
     screen.fill(BG)
-    width = blood_img.get_width()
-    new_blood_img = pygame.transform.scale(
-        blood_img, (width, blood_img.get_height() * 1.15))
-    for x in range(4):
-        screen.blit(new_blood_img, ((x * width) - bg_scroll * 0.6, -100))
-        screen.blit(vessels_img, ((x * width) - bg_scroll * 0.8, 0))
+    width = veins_img.get_width()
+    for x in range(5):
+        screen.blit(veins_img, ((x * width) - bg_scroll * 0.5, 0))
+        screen.blit(vessels_img,((x * width) - bg_scroll * 0.6, sc_height - vessels_img.get_height() - 350))
+        screen.blit(blood_img, ((x * width) - bg_scroll * 0.7, sc_height - blood_img.get_height() + 250))
 
 # function to reset level
 
@@ -110,6 +122,7 @@ def reset_level():
     item_box_group.empty()
     enemy_group.empty()
     enemy_2_group.empty()
+    boss_group.empty()
     thorn_group.empty()
     exit_group.empty()
 
@@ -131,7 +144,7 @@ class Player(pygame.sprite.Sprite):
         self.ammo = ammo
         self.start_ammo = ammo
         self.shoot_cd = 0
-        self.health = 100
+        self.health = 200
         self.max_health = self.health
         self.direction = 1
         self.vel_y = 0
@@ -144,7 +157,7 @@ class Player(pygame.sprite.Sprite):
         self.update_time = pygame.time.get_ticks()
         # create ai specific variables
         self.move_counter = 0
-        self.vision = pygame.Rect(0, 0, 200, 20)
+        self.vision = pygame.Rect(0, 0, 250, 20)
         self.idling = False
         self.idling_counter = 0
 
@@ -257,7 +270,7 @@ class Player(pygame.sprite.Sprite):
 
     def shoot(self):
         if self.shoot_cd == 0 and self.ammo > 0:
-            self.shoot_cd = 20
+            self.shoot_cd = 15
             bullet = Bullet(self.rect.centerx + (
                 0.8 * self.rect.size[0] * self.direction), self.rect.centery - 19, self.direction)
             bullet_group.add(bullet)
@@ -288,8 +301,8 @@ class Player(pygame.sprite.Sprite):
                     self.move_counter += 1
                     # update ai vision as the enemy moves
                     self.vision.center = (
-                        self.rect.centerx + 100 * self.direction, self.rect.centery - 19)
-                    pygame.draw.rect(screen, RED, self.vision)
+                        self.rect.centerx + 120 * self.direction, self.rect.centery - 19)
+                    
 
                     if self.move_counter > TILE_SIZE:
                         self.direction *= -1
@@ -337,6 +350,207 @@ class Player(pygame.sprite.Sprite):
         screen.blit(pygame.transform.flip(
             self.img, self.flip, False), self.rect)
 
+class Boss(pygame.sprite.Sprite):
+    def __init__(boss, char_type, x, y, scale, speed, ammo):
+        pygame.sprite.Sprite.__init__(boss)
+        boss.alive = True
+        boss.char_type = char_type
+        boss.speed = speed
+        boss.ammo = ammo
+        boss.start_ammo = ammo
+        boss.shoot_cd = 0
+        boss.health = 1250
+        boss.max_health = boss.health
+        boss.direction = -1
+        boss.vel_y = 0
+        boss.jump = False
+        boss.in_air = True
+        boss.flip = False
+        boss.animation_list = []
+        boss.frame_index = 0
+        boss.action = 0
+        boss.update_time = pygame.time.get_ticks()
+        # create ai specific variables
+        boss.move_counter = 0
+        boss.vision = pygame.Rect(0, 0, 550, 100)
+        boss.idling = False
+        boss.idling_counter = 0
+
+        # load all images for player
+        animation_types = ['idle', 'run', 'jump', 'death']
+        for animation in animation_types:
+            # reset temporary list
+            temp_list = []
+            # count number of files in the folder
+            num_of_frames = len(os.listdir(
+                f'imgs/{boss.char_type}/{animation}'))
+            for i in range(num_of_frames):
+                image = pygame.image.load(
+                    f'imgs/{boss.char_type}/{animation}/{i}.png').convert_alpha()
+                image = pygame.transform.scale(
+                    image, (int(image.get_width() * scale), int(image.get_height() * scale)))
+                temp_list.append(image)
+            boss.animation_list.append(temp_list)
+
+        boss.img = boss.animation_list[boss.action][boss.frame_index]
+        boss.rect = boss.img.get_rect()
+        boss.rect.center = (x, y)
+        boss.width = boss.img.get_width()
+        boss.height = boss.img.get_height()
+
+    def update(boss):
+        boss.update_animation()
+        boss.check_alive()
+        # update cooldown
+        if boss.shoot_cd > 0:
+            boss.shoot_cd -= 1
+
+    def move(boss, m_left, m_right):
+        # reset movement variables
+        screen_scroll = 0
+        dx = 0
+        dy = 0
+        # movement variables
+        if m_left:
+            dx = -boss.speed
+            boss.flip = True
+            boss.direction = -1
+        if m_right:
+            dx = boss.speed
+            boss.flip = False
+            boss.direction = 1
+
+        # jump
+        if boss.jump == True and boss.in_air == False:
+            boss.vel_y = -14
+            boss.jump = False
+            boss.in_air = True
+
+        # apply gravity
+        boss.vel_y += gravity
+        if boss.vel_y > 14:
+            boss.vel_y
+        dy += boss.vel_y
+
+        # check for collision
+        for tile in world.obstacle_list:
+            # check collision in the x direction
+            if tile[1].colliderect(boss.rect.x + dx, boss.rect.y, boss.width, boss.height):
+                dx = 0
+                # if the ai has hit a wall, turn around
+                if boss.char_type == 'boss':
+                    boss.direction *= -1
+                    boss.move_counter = 0
+            # check for collision in the y direction
+            if tile[1].colliderect(boss.rect.x, boss.rect.y + dy, boss.width, boss.height):
+                # check if below the ground; jumping
+                if boss.vel_y < 0:
+                    boss.vel_y = 0
+                    dy = tile[1].bottom - boss.rect.top
+                # check if above ground; falling
+                elif boss.vel_y >= 0:
+                    boss.vel_y = 0
+                    boss.in_air = False
+                    dy = tile[1].top - boss.rect.bottom
+
+        # check for collision with spike
+        if pygame.sprite.spritecollide(boss, thorn_group, False):
+            boss.health = 0
+
+        level_complete = False
+        if pygame.sprite.spritecollide(boss, exit_group, False):
+            level_complete = True
+
+        # check if fallen off map
+        if boss.rect.bottom > sc_height:
+            boss.health = 0
+
+        # check if going off screen
+        if boss.char_type == 'player':
+            if boss.rect.left + dx < 0 or boss.rect.right + dx > sc_width:
+                dx = 0
+
+        # update rect position
+        boss.rect.x += dx
+        boss.rect.y += dy
+
+        # update scroll based on player position
+        if boss.char_type == 'player':
+            if (boss.rect.right > sc_width - SCROLL_THRESH and bg_scroll < (world.level_length * TILE_SIZE) - sc_width)\
+                    or (boss.rect.left < SCROLL_THRESH and bg_scroll > abs(dx)):
+                boss.rect.x -= dx
+                screen_scroll = -dx
+
+        return screen_scroll, level_complete
+
+    def shoot(boss):
+        if boss.shoot_cd == 0 and boss.ammo > 0:
+            boss.shoot_cd = 120
+            bullet = Bullet_boss(boss.rect.centerx + (
+                0.8 * boss.rect.size[0] * boss.direction), boss.rect.centery + 20, boss.direction)
+            bullet_group.add(bullet)
+            # reduce ammo
+            boss.ammo -= 1
+
+    def ai(boss):
+        if boss.alive and player.alive:
+            if boss.vision.colliderect(player.rect):
+                # stop running and face the player
+                boss.update_action(0)  # for idle
+                # shoot
+                boss.shoot()
+            else:
+                if boss.idling == False:
+                    # update ai vision as the enemy moves
+                    boss.vision.center = (
+                        boss.rect.centerx + 240 * boss.direction, boss.rect.centery + 20)
+                    
+
+                    if boss.move_counter > TILE_SIZE:
+                        boss.direction *= -1
+                        boss.move_counter *= -1
+                else:
+                    boss.idling_counter -= 1
+                    if boss.idling_counter <= 0:
+                        boss.idling = False
+
+        # scroll
+        boss.rect.x += screen_scroll
+
+    def update_animation(boss):
+        # update animation
+        ANIMATION_CD = 120
+        # update image depending on current frame
+        boss.img = boss.animation_list[boss.action][boss.frame_index]
+        # check if enough time has passed since last update
+        if pygame.time.get_ticks() - boss.update_time > ANIMATION_CD:
+            boss.update_time = pygame.time.get_ticks()
+            boss.frame_index += 1
+        # if animation has run out then reset
+        if boss.frame_index >= len(boss.animation_list[boss.action]):
+            if boss.action == 3:
+                boss.frame_index = len(boss.animation_list[boss.action]) - 1
+            else:
+                boss.frame_index = 0
+
+    def update_action(boss, new_action):
+        # check if new action is different to the previous one
+        if new_action != boss.action:
+            boss.action = new_action
+            # update the animation settings
+            boss.frame_index = 0
+            boss.update_time = pygame.time.get_ticks()
+
+    def check_alive(boss):
+        if boss.health <= 0:
+            boss.health = 0
+            boss.speed = 0
+            boss.alive = False
+            boss.update_action(3)
+
+    def draw(boss):
+        screen.blit(pygame.transform.flip(
+            boss.img, boss.flip, False), boss.rect)
 
 class Enemy2(pygame.sprite.Sprite):
     def __init__(enemy2, char_type, x, y, scale, speed, ammo):
@@ -347,7 +561,7 @@ class Enemy2(pygame.sprite.Sprite):
         enemy2.ammo = ammo
         enemy2.start_ammo = ammo
         enemy2.shoot_cd = 0
-        enemy2.health = 100
+        enemy2.health = 800
         enemy2.max_health = enemy2.health
         enemy2.direction = -1
         enemy2.vel_y = 0
@@ -360,7 +574,7 @@ class Enemy2(pygame.sprite.Sprite):
         enemy2.update_time = pygame.time.get_ticks()
         # create ai specific variables
         enemy2.move_counter = 0
-        enemy2.vision = pygame.Rect(0, 0, 200, 20)
+        enemy2.vision = pygame.Rect(0, 0, 800, 30)
         enemy2.idling = False
         enemy2.idling_counter = 0
 
@@ -461,7 +675,7 @@ class Enemy2(pygame.sprite.Sprite):
 
     def shoot(enemy2):
         if enemy2.shoot_cd == 0 and enemy2.ammo > 0:
-            enemy2.shoot_cd = 20
+            enemy2.shoot_cd = 60
             bullet = enemy2_Bullet(enemy2.rect.centerx + (
                 0.8 * enemy2.rect.size[0] * enemy2.direction), enemy2.rect.centery + 8, enemy2.direction)
             bullet_group.add(bullet)
@@ -481,15 +695,14 @@ class Enemy2(pygame.sprite.Sprite):
                 # shoot
                 enemy2.shoot()
             enemy2.vision.center = (
-                enemy2.rect.centerx + 100 * enemy2.direction, enemy2.rect.centery + 8)
-            pygame.draw.rect(screen, RED, enemy2.vision)
-
+                enemy2.rect.centerx + 380 * enemy2.direction, enemy2.rect.centery + 8)
+            
         # scroll
         enemy2.rect.x += screen_scroll
 
     def update_animation(enemy2):
         # update animation
-        ANIMATION_CD = 120
+        ANIMATION_CD = 240
         # update image depending on current frame
         enemy2.img = enemy2.animation_list[enemy2.action][enemy2.frame_index]
         # check if enough time has passed since last update
@@ -561,7 +774,11 @@ class World():
                         enemy_2 = Enemy2('enemy_2', x * TILE_SIZE,
                                          y * TILE_SIZE, 1, 3, 9999)
                         enemy_2_group.add(enemy_2)
-                    elif tile == 7:  # create exit
+                    elif tile == 7:
+                        boss = Boss('boss', x * TILE_SIZE,
+                                         y * TILE_SIZE, 1, 3, 9999)
+                        boss_group.add(boss)
+                    elif tile == 8:  # create exit
                         exit = Exit(img, x * TILE_SIZE, y * TILE_SIZE)
                         exit_group.add(exit)
 
@@ -657,15 +874,34 @@ class enemy2_Bullet(pygame.sprite.Sprite):
         # check collision with characters
         if pygame.sprite.spritecollide(player, bullet_group, False):
             if player.alive:
-                player.health -= 20
+                player.health -= 40
                 self.kill()
-        for enemy in enemy_group:
-            if pygame.sprite.spritecollide(enemy, bullet_group, False):
-                if enemy.alive:
-                    enemy.health -= 25
-                    self.kill()
 
+class Bullet_boss(pygame.sprite.Sprite):
+    def __init__(self, x, y, direction):
+        pygame.sprite.Sprite.__init__(self)
+        self.speed = 5
+        self.image = bullet3_img
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.direction = direction
 
+    def update(self):
+        # move bullet
+        self.rect.x += (self.direction * self.speed) + screen_scroll
+        # check if bullet has gone off screen
+        if self.rect.right < 0 or self.rect.left > sc_width:
+            self.kill()
+        # check for collision with level
+        for tile in world.obstacle_list:
+            if tile[1].colliderect(self.rect):
+                self.kill()
+
+        # check collision with characters
+        if pygame.sprite.spritecollide(player, bullet_group, False):
+            if player.alive:
+                player.health -= 80
+                self.kill()
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):
         pygame.sprite.Sprite.__init__(self)
@@ -694,7 +930,17 @@ class Bullet(pygame.sprite.Sprite):
         for enemy in enemy_group:
             if pygame.sprite.spritecollide(enemy, bullet_group, False):
                 if enemy.alive:
-                    enemy.health -= 25
+                    enemy.health -= 50
+                    self.kill()
+        for enemy_2 in enemy_2_group:
+            if pygame.sprite.spritecollide(enemy_2, bullet_group, False):
+                if enemy_2.alive:
+                    enemy_2.health -= 50
+                    self.kill()            
+        for boss in boss_group:
+            if pygame.sprite.spritecollide(boss, bullet_group, False):
+                if boss.alive:
+                    boss.health -= 50
                     self.kill()
 
 
@@ -832,7 +1078,7 @@ def draw_options():
 def draw_keys():
     overlay()
     font = pygame.font.SysFont("arialblack", 70)
-    controls = {"Jump": "W", "Left": "A", "Right": "D", "Shoot": "Space"}
+    controls = {"Jump": "W", "Left": "A", "Right": "D", "Shoot": "Space", "Pause": "Esc"}
     key_font = pygame.font.SysFont("arialblack", 50)
     x = sc_width // 2
     y = (sc_height - len(controls) * 100) // 2
@@ -873,8 +1119,7 @@ def draw_credits():
 # So if you clicked it, it will just continue where it left off
 music_is_toggled = True
 
-bgm.pause()
-
+bgm_2.pause()
 
 def music_toggle(toggle):
     if toggle:
@@ -883,6 +1128,7 @@ def music_toggle(toggle):
             music_on_img, (music_on_img.get_width() * .8, music_on_img.get_height() * .8))
     else:
         bgm.pause()
+        bgm_2.pause()
         music_bttn.image = pygame.transform.scale(
             music_off_img, (music_off_img.get_width() * .8, music_off_img.get_height() * .8))
 
@@ -952,6 +1198,7 @@ bullet_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
 enemy_group = pygame.sprite.Group()
 enemy_2_group = pygame.sprite.Group()
+boss_group = pygame.sprite.Group()
 thorn_group = pygame.sprite.Group()
 exit_group = pygame.sprite.Group()
 
@@ -981,19 +1228,28 @@ while run:
 
     if start_game == False:
         # draw menu
-        screen.fill(BG)
+        screen.blit(background, (0, 0))
         # add buttons
         if start_bttn.draw(screen) and menu_state == "main":
             start_game = True
             start_intro = True
+            button_fx.play()
+            bgm.pause()
+            bgm_2.unpause()
             time.start()
+            if music_is_toggled == False:
+                bgm_2.pause()
         if options_bttn.draw(screen):
+            button_fx.play()
             menu_state = 'options'
         if credits_bttn.draw(screen):
+            button_fx.play()
             menu_state = 'credits'
         if keys_bttn.draw(screen):
+            button_fx.play()
             menu_state = "keys"
         if quit_bttn.draw(screen):
+            button_fx.play()
             run = False
 
         # check if the options menu is open
@@ -1006,16 +1262,19 @@ while run:
                 music_toggle(music_is_toggled)  # change yung image nung music
 
             if back_bttn.draw(screen):
+                button_fx.play()
                 menu_state = "main"
 
         if menu_state == "keys":  # keybind window
             draw_keys()
             if done_bttn.draw(screen):
+                button_fx.play()
                 menu_state = "main"
 
         if menu_state == "credits":  # credits window
             draw_credits()
             if done_bttn.draw(screen):
+                button_fx.play()
                 menu_state = "main"
 
     else:
@@ -1040,6 +1299,10 @@ while run:
             enemy_2.ai()
             enemy_2.update()
             enemy_2.draw()
+        for boss in boss_group:
+            boss.ai()
+            boss.update()
+            boss.draw()
 
         # update and draw groups
         bullet_group.update()
@@ -1079,7 +1342,7 @@ while run:
                 level += 1
                 bg_scroll = 0
                 world_data = reset_level()
-                if level <= max_levels-2:
+                if level <= max_levels:
                     start_intro = True
                     # load in level data and create world
                     with open(f'level{level}_data.csv', newline='') as csvfile:
@@ -1094,7 +1357,6 @@ while run:
                     win_screen()
 
         else:
-            time.reset()
             screen_scroll = 0
             if death_fade.fade():
                 if restart_button.draw(screen):
@@ -1125,10 +1387,12 @@ while run:
                 m_right = True
             if event.key == pygame.K_SPACE:
                 shoot = True
+                shot_fx.play()
             if event.key == pygame.K_w and player.alive:
                 player.jump = True
             if event.key == pygame.K_ESCAPE and start_game:
                 time.started = not time.started
+                button_fx.play()
                 pause_game()
 
         # when button is not pressed

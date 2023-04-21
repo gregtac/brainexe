@@ -1,12 +1,9 @@
 import pygame
-from pygame import mixer
 import os
 import random
 import csv
 import button
-
-path = "C:\\Users\\third\\Desktop\\capstone"
-os.chdir(path)
+import sys
 
 pygame.init()
 
@@ -15,7 +12,8 @@ sc_height = int(sc_width * 0.8)
 
 screen = pygame.display.set_mode((sc_width, sc_height))
 pygame.display.set_caption('BrainExe')
-
+icon = pygame.image.load("icon.ico")
+pygame.display.set_icon(icon)
 # framerate
 clock = pygame.time.Clock()
 FPS = 60
@@ -26,14 +24,19 @@ SCROLL_THRESH = 200
 ROWS = 16
 COLS = 150
 TILE_SIZE = sc_height // ROWS
-TILE_TYPES = 9
+TILE_TYPES = 11
 max_levels = 3
 screen_scroll = 0
 bg_scroll = 0
-level = 1
 start_game = False
 start_intro = False
 menu_state = 'main'
+ammo = 20
+with open('tuts.txt', 'r') as file:
+    contents = file.read().strip()
+
+is_tutorial_done = True if contents.lower() == 'true' else False
+level = 1 if is_tutorial_done else 0
 
 # player actions
 m_left = False
@@ -44,13 +47,15 @@ shot_fx = pygame.mixer.Sound('audio/shoot.mp3')
 shot_fx.set_volume(0.3)
 button_fx = pygame.mixer.Sound('audio/button.mp3')
 button_fx.set_volume(0.3)
+empty_gun_fx = pygame.mixer.Sound('audio/empty-gun.mp3')
+empty_gun_fx.set_volume(0.3)
 
 bgm_load = pygame.mixer.Sound('audio/ost.mp3')
 bgm = bgm_load.play(-1, 0, 500)
-pygame.mixer.Sound.set_volume(bgm_load, 0.2)
+pygame.mixer.Sound.set_volume(bgm_load, 0.055)
 bgm_2_load = pygame.mixer.Sound('audio/audio_bgm.mp3')
 bgm_2 = bgm_2_load.play(-1, 0, 500)
-pygame.mixer.Sound.set_volume(bgm_2_load, 0.2)
+pygame.mixer.Sound.set_volume(bgm_2_load, 0.055)
 
 # load images
 # button images
@@ -111,8 +116,10 @@ def draw_bg():
     width = veins_img.get_width()
     for x in range(5):
         screen.blit(veins_img, ((x * width) - bg_scroll * 0.5, 0))
-        screen.blit(vessels_img,((x * width) - bg_scroll * 0.6, sc_height - vessels_img.get_height() - 350))
-        screen.blit(blood_img, ((x * width) - bg_scroll * 0.7, sc_height - blood_img.get_height() + 250))
+        screen.blit(vessels_img, ((x * width) - bg_scroll * 0.6,
+                    sc_height - vessels_img.get_height() - 350))
+        screen.blit(blood_img, ((x * width) - bg_scroll * 0.7,
+                    sc_height - blood_img.get_height() + 250))
 
 # function to reset level
 
@@ -125,6 +132,7 @@ def reset_level():
     boss_group.empty()
     thorn_group.empty()
     exit_group.empty()
+    decoration_group.empty()
 
     # create empty tile list
     data = []
@@ -261,7 +269,7 @@ class Player(pygame.sprite.Sprite):
 
         # update scroll based on player position
         if self.char_type == 'player':
-            if (self.rect.right > sc_width - SCROLL_THRESH and bg_scroll < (world.level_length * TILE_SIZE) - sc_width)\
+            if (self.rect.right+200 > sc_width - SCROLL_THRESH and bg_scroll < (world.level_length * TILE_SIZE) - sc_width)\
                     or (self.rect.left < SCROLL_THRESH and bg_scroll > abs(dx)):
                 self.rect.x -= dx
                 screen_scroll = -dx
@@ -302,7 +310,6 @@ class Player(pygame.sprite.Sprite):
                     # update ai vision as the enemy moves
                     self.vision.center = (
                         self.rect.centerx + 120 * self.direction, self.rect.centery - 19)
-                    
 
                     if self.move_counter > TILE_SIZE:
                         self.direction *= -1
@@ -349,6 +356,7 @@ class Player(pygame.sprite.Sprite):
     def draw(self):
         screen.blit(pygame.transform.flip(
             self.img, self.flip, False), self.rect)
+
 
 class Boss(pygame.sprite.Sprite):
     def __init__(boss, char_type, x, y, scale, speed, ammo):
@@ -504,7 +512,6 @@ class Boss(pygame.sprite.Sprite):
                     # update ai vision as the enemy moves
                     boss.vision.center = (
                         boss.rect.centerx + 240 * boss.direction, boss.rect.centery + 20)
-                    
 
                     if boss.move_counter > TILE_SIZE:
                         boss.direction *= -1
@@ -552,6 +559,7 @@ class Boss(pygame.sprite.Sprite):
         screen.blit(pygame.transform.flip(
             boss.img, boss.flip, False), boss.rect)
 
+
 class Enemy2(pygame.sprite.Sprite):
     def __init__(enemy2, char_type, x, y, scale, speed, ammo):
         pygame.sprite.Sprite.__init__(enemy2)
@@ -561,7 +569,7 @@ class Enemy2(pygame.sprite.Sprite):
         enemy2.ammo = ammo
         enemy2.start_ammo = ammo
         enemy2.shoot_cd = 0
-        enemy2.health = 800
+        enemy2.health = 100000
         enemy2.max_health = enemy2.health
         enemy2.direction = -1
         enemy2.vel_y = 0
@@ -696,7 +704,7 @@ class Enemy2(pygame.sprite.Sprite):
                 enemy2.shoot()
             enemy2.vision.center = (
                 enemy2.rect.centerx + 380 * enemy2.direction, enemy2.rect.centery + 8)
-            
+
         # scroll
         enemy2.rect.x += screen_scroll
 
@@ -754,31 +762,35 @@ class World():
                     tile_data = (img, img_rect)
                     if tile >= 0 and tile <= 1:
                         self.obstacle_list.append(tile_data)
-                    elif tile == 2:
+                    elif tile >= 2 and tile <= 3:
+                        decoration = Decoration(
+                            img, x * TILE_SIZE, y * TILE_SIZE)
+                        decoration_group.add(decoration)
+                    elif tile == 4:
                         thorn = Spike(img, x * TILE_SIZE, y * TILE_SIZE)
                         thorn_group.add(thorn)
-                    elif tile == 3:
+                    elif tile == 5:
                         item_box = ItemBox(
                             'Ammo', x * TILE_SIZE, y * TILE_SIZE)
                         item_box_group.add(item_box)
-                    elif tile == 4:
+                    elif tile == 6:
                         player = Player('player', x * TILE_SIZE,
-                                        y * TILE_SIZE, 1, 7, 20)
+                                        y * TILE_SIZE, 1, 7, ammo)
                         health_bar = HPBar(
                             10, 10, player.health, player.health)
-                    elif tile == 5:
+                    elif tile == 7:
                         enemy = Player('enemy', x * TILE_SIZE,
                                        y * TILE_SIZE, 1, 3, 9999)
                         enemy_group.add(enemy)
-                    elif tile == 6:
+                    elif tile == 8:
                         enemy_2 = Enemy2('enemy_2', x * TILE_SIZE,
                                          y * TILE_SIZE, 1, 3, 9999)
                         enemy_2_group.add(enemy_2)
-                    elif tile == 7:
+                    elif tile == 9:
                         boss = Boss('boss', x * TILE_SIZE,
-                                         y * TILE_SIZE, 1, 3, 9999)
+                                    y * TILE_SIZE, 1, 3, 9999)
                         boss_group.add(boss)
-                    elif tile == 8:  # create exit
+                    elif tile == 10:  # create exit
                         exit = Exit(img, x * TILE_SIZE, y * TILE_SIZE)
                         exit_group.add(exit)
 
@@ -791,6 +803,18 @@ class World():
 
 
 class Spike(pygame.sprite.Sprite):
+    def __init__(self, img, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.rect.midtop = (x + TILE_SIZE // 2, y +
+                            (TILE_SIZE - self.image.get_height()))
+
+    def update(self):
+        self.rect.x += screen_scroll
+
+
+class Decoration(pygame.sprite.Sprite):
     def __init__(self, img, x, y):
         pygame.sprite.Sprite.__init__(self)
         self.image = img
@@ -830,6 +854,7 @@ class ItemBox(pygame.sprite.Sprite):
         if pygame.sprite.collide_rect(self, player):
             # check what kind of item box
             if self.item_type == 'Ammo':
+                score.add_score(100)
                 player.ammo += 10
             self.kill()
 
@@ -877,6 +902,7 @@ class enemy2_Bullet(pygame.sprite.Sprite):
                 player.health -= 40
                 self.kill()
 
+
 class Bullet_boss(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):
         pygame.sprite.Sprite.__init__(self)
@@ -902,6 +928,8 @@ class Bullet_boss(pygame.sprite.Sprite):
             if player.alive:
                 player.health -= 80
                 self.kill()
+
+
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):
         pygame.sprite.Sprite.__init__(self)
@@ -931,17 +959,23 @@ class Bullet(pygame.sprite.Sprite):
             if pygame.sprite.spritecollide(enemy, bullet_group, False):
                 if enemy.alive:
                     enemy.health -= 50
+                    score.add_score(random.randint(0, 10))
                     self.kill()
+                else:
+                    score.add_score(random.randint(0, 100))
         for enemy_2 in enemy_2_group:
             if pygame.sprite.spritecollide(enemy_2, bullet_group, False):
                 if enemy_2.alive:
                     enemy_2.health -= 50
-                    self.kill()            
+                    self.kill()
         for boss in boss_group:
             if pygame.sprite.spritecollide(boss, bullet_group, False):
                 if boss.alive:
                     boss.health -= 50
+                    score.add_score(random.randint(0, 100))
                     self.kill()
+                else:
+                    score.add_score(random.randint(100, 1000))
 
 
 class ScreenFade():
@@ -1006,33 +1040,53 @@ class Timer:
         timer_rect.topright = (screen.get_width() - 10, 10)
         screen.blit(timer_text, timer_rect)
 
-    def save_time(self):
-        csv_file = "time_data.csv"
-        # Check if the CSV file exists, create it with a header if it doesn't
-        if not os.path.exists(csv_file):
-            with open(csv_file, 'w', newline='') as csvfile:
-                csv_writer = csv.writer(csvfile)
-                csv_writer.writerow(["id", "time"])
 
-        # Read the CSV file to find the previous id
-        last_id = 0
-        with open(csv_file, 'r', newline='') as csvfile:
-            csv_reader = csv.reader(csvfile)
-            for row in csv_reader:
-                if len(row) > 0 and row[0].isdigit():
-                    last_id = int(row[0])
+class Score:
+    def __init__(self):
+        self.score_font = pygame.font.SysFont(None, 48)
+        self.score = 0
 
-        # Increment the id
-        new_id = last_id + 1
+    def add_score(self, value):
+        self.score += value
 
-        # Save the time, id, and death count
-        with open(csv_file, 'a', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(
-                [new_id, f"{self.minutes:02d}:{self.seconds:02d}"])
+    def draw(self, screen):
+        score_text = self.score_font.render(
+            f"Score: {self.score}", True, (255, 255, 255))
+        score_rect = score_text.get_rect()
+        score_rect.midtop = (screen.get_width() // 2, 10)
+        screen.blit(score_text, score_rect)
 
 
+score = Score()
 time = Timer()
+
+
+def save_time():
+    csv_file = "player_record.csv"
+    # Check if the CSV file exists, create it with a header if it doesn't
+    if not os.path.exists(csv_file):
+        with open(csv_file, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(["id", "time", "score"])
+
+    # Read the CSV file to find the previous id
+    last_id = 0
+    with open(csv_file, 'r', newline='') as csvfile:
+        csv_reader = csv.reader(csvfile)
+        for row in csv_reader:
+            if len(row) > 0 and row[0].isdigit():
+                last_id = int(row[0])
+
+    # Increment the id
+    new_id = last_id + 1
+
+    # Save the time, id, and score
+    with open(csv_file, 'a', newline='') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        csv_writer.writerow(
+            [new_id, f"{time.minutes:02d}:{time.seconds:02d}", score.score])
+
+
 # create screen fades
 intro_fade = ScreenFade(1, BLACK, 15)
 death_fade = ScreenFade(2, PINK, 15)
@@ -1046,8 +1100,8 @@ credits_bttn = button.Button(
     (sc_width//2) + 200, (sc_height - 135), credits_img, .45)
 keys_bttn = button.Button(50, (sc_height - 135), controls_img, .45)
 quit_bttn = button.Button((sc_width//3) + 90, (sc_height - 85), quit_img, .6)
-music_bttn = button.Button(345, 200, music_on_img, .8)
-back_bttn = button.Button(280, 300, back_img, 1)
+music_bttn = button.Button(345, 220, music_on_img, .8)
+back_bttn = button.Button(280, 350, back_img, 1)
 done_bttn = button.Button(
     sc_width // 2.8, sc_height - 225, back_img, 1)
 restart_button = button.Button(
@@ -1077,8 +1131,8 @@ def draw_options():
 
 def draw_keys():
     overlay()
-    font = pygame.font.SysFont("arialblack", 70)
-    controls = {"Jump": "W", "Left": "A", "Right": "D", "Shoot": "Space", "Pause": "Esc"}
+    controls = {"Jump": "W", "Left": "A",
+                "Right": "D", "Shoot": "Space", "Pause": "Esc"}
     key_font = pygame.font.SysFont("arialblack", 50)
     x = sc_width // 2
     y = (sc_height - len(controls) * 100) // 2
@@ -1121,6 +1175,7 @@ music_is_toggled = True
 
 bgm_2.pause()
 
+
 def music_toggle(toggle):
     if toggle:
         bgm.unpause()
@@ -1137,20 +1192,6 @@ def pause_game():
     paused = True
     time.pause()
     while paused:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    paused = False
-                    time.start()
-
-                if event.key == pygame.K_q:
-                    pygame.quit()
-                    quit()
-
         overlay()
         title_font = pygame.font.SysFont("arialblack", 70)
         desc_font = pygame.font.SysFont("arialblack", 35)
@@ -1159,6 +1200,16 @@ def pause_game():
                   (sc_width//3) - 15, (sc_height - 75)//3)
         draw_text("Press ESC to Continue or Q to Quit",
                   desc_font, WHITE, (sc_width//10), 300)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    paused = False
+                    time.start()
+                if event.key == pygame.K_q:
+                    sys.exit()
 
         pygame.display.update()
 
@@ -1167,30 +1218,43 @@ def win_screen():
     win = True
     time.pause()
     while win:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_q:
-                    pygame.quit()
-                    quit()
 
         overlay()
         title_font = pygame.font.SysFont("arialblack", 70)
-        time_font = pygame.font.SysFont("arialblack", 50)
+        misc_font = pygame.font.SysFont("arialblack", 50)
         desc_font = pygame.font.SysFont("arialblack", 25)
 
         draw_text("Congratulation", title_font, WHITE,
                   (sc_width//10) + 35, (sc_height - 75)//5)
         timer_text = f"Your Time: {time.minutes:02d}:{time.seconds:02d}"
-        draw_text(timer_text, time_font, WHITE,
+        score_text = f"Your Score: {score.score}"
+        draw_text(timer_text, misc_font, WHITE,
                   (sc_width//5) + 15, (sc_height - 75)//3)
-        draw_text("Press Q to Quit",
-                  desc_font, WHITE, (sc_width//5) + 150, (sc_height - 200)//1)
+        draw_text(score_text, misc_font, WHITE,
+                  (sc_width + len(score_text))//5, (sc_height + 100)//3)
+        draw_text("Press Enter to Return and Q to Quit",
+                  desc_font, WHITE, (sc_width//5), (sc_height - 200)//1)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    sys.exit()
+                elif event.key == pygame.K_RETURN:
+                    win = False
 
         pygame.display.update()
+
+
+def update_file():
+    with open('tuts.txt', 'r+') as file:
+        contents = file.read().strip()
+        if contents.lower() != 'true':
+            file.seek(0)
+            file.write('true')
+        file.truncate()
+        file.flush()
 
 
 # create sprite groups
@@ -1201,18 +1265,16 @@ enemy_2_group = pygame.sprite.Group()
 boss_group = pygame.sprite.Group()
 thorn_group = pygame.sprite.Group()
 exit_group = pygame.sprite.Group()
-
+decoration_group = pygame.sprite.Group()
 
 # temp for create item boxes
-
-
 # create empty tile list
 world_data = []
 for row in range(ROWS):
     r = [-1] * COLS
     world_data.append(r)
 # load in level data and create world
-with open(f'level{level}_data.csv', newline='') as csvfile:
+with open(f'levels/level{level}_data.csv', newline='') as csvfile:
     reader = csv.reader(csvfile, delimiter=',')
     for x, row in enumerate(reader):
         for y, tile in enumerate(row):
@@ -1229,7 +1291,7 @@ while run:
     if start_game == False:
         # draw menu
         screen.blit(background, (0, 0))
-        # add buttons
+        time.reset()
         if start_bttn.draw(screen) and menu_state == "main":
             start_game = True
             start_intro = True
@@ -1305,6 +1367,8 @@ while run:
             boss.draw()
 
         # update and draw groups
+        decoration_group.update()
+        decoration_group.draw(screen)
         bullet_group.update()
         bullet_group.draw(screen)
         item_box_group.update()
@@ -1316,7 +1380,7 @@ while run:
 
         time.update()
         time.draw(screen)
-
+        score.draw(screen)
         # show intro
         if start_intro == True:
             if intro_fade.fade():
@@ -1339,13 +1403,20 @@ while run:
             bg_scroll -= screen_scroll
             # check if player has completed level
             if level_complete:
+                if level == 0:
+                    time.reset()
+                    score.score = 0
+                    ammo = 20
+                    update_file()
+                else:
+                    ammo = player.ammo
                 level += 1
                 bg_scroll = 0
                 world_data = reset_level()
                 if level <= max_levels:
                     start_intro = True
                     # load in level data and create world
-                    with open(f'level{level}_data.csv', newline='') as csvfile:
+                    with open(f'levels/level{level}_data.csv', newline='') as csvfile:
                         reader = csv.reader(csvfile, delimiter=',')
                         for x, row in enumerate(reader):
                             for y, tile in enumerate(row):
@@ -1353,8 +1424,35 @@ while run:
                     world = World()
                     player, health_bar = world.process_data(world_data)
                 else:
-                    time.save_time()
+                    ammo = 20
+                    save_time()
                     win_screen()
+                    level = 1
+                    score.score = 0
+                    m_left = False
+                    m_right = False
+                    screen_scroll = 0
+                    bg_scroll = 0
+                    world_data = reset_level()
+                    for row in range(ROWS):
+                        r = [-1] * COLS
+                        world_data.append(r)
+                    # load in level data and create world
+                    with open(f'levels/level{level}_data.csv', newline='') as csvfile:
+                        reader = csv.reader(csvfile, delimiter=',')
+                        for x, row in enumerate(reader):
+                            for y, tile in enumerate(row):
+                                world_data[x][y] = int(tile)
+                    world = World()
+                    player, health_bar = world.process_data(world_data)
+                    bgm.stop()
+                    bgm_2.stop()
+                    bgm.play(bgm_load)
+                    bgm_2.play(bgm_2_load)
+                    bgm_2.pause()
+                    if not music_is_toggled:
+                        bgm.pause()
+                    start_game = False
 
         else:
             screen_scroll = 0
@@ -1364,15 +1462,46 @@ while run:
                     death_fade.fade_counter = 0
                     start_intro = True
                     bg_scroll = 0
+                    ammo = player.ammo // 2 if player.ammo//2 > 20 else 20
+                    score.score = score.score // 2 if score.score > 100 else 0
                     world_data = reset_level()
                     # load in level data and create world
-                    with open(f'level{level}_data.csv', newline='') as csvfile:
+                    with open(f'levels/level{level}_data.csv', newline='') as csvfile:
                         reader = csv.reader(csvfile, delimiter=',')
                         for x, row in enumerate(reader):
                             for y, tile in enumerate(row):
                                 world_data[x][y] = int(tile)
                     world = World()
                     player, health_bar = world.process_data(world_data)
+                if back_bttn.draw(screen):
+                    level = 1
+                    score.score = 0
+                    death_fade.fade_counter = 0
+                    ammo = 20
+                    m_left = False
+                    m_right = False
+                    screen_scroll = 0
+                    bg_scroll = 0
+                    world_data = reset_level()
+                    for row in range(ROWS):
+                        r = [-1] * COLS
+                        world_data.append(r)
+                    # load in level data and create world
+                    with open(f'levels/level{level}_data.csv', newline='') as csvfile:
+                        reader = csv.reader(csvfile, delimiter=',')
+                        for x, row in enumerate(reader):
+                            for y, tile in enumerate(row):
+                                world_data[x][y] = int(tile)
+                    world = World()
+                    player, health_bar = world.process_data(world_data)
+                    bgm.stop()
+                    bgm_2.stop()
+                    bgm.play(bgm_load)
+                    bgm_2.play(bgm_2_load)
+                    bgm_2.pause()
+                    if not music_is_toggled:
+                        bgm.pause()
+                    start_game = False
 
     for event in pygame.event.get():
         # quits game
@@ -1387,7 +1516,10 @@ while run:
                 m_right = True
             if event.key == pygame.K_SPACE:
                 shoot = True
-                shot_fx.play()
+                if player.ammo > 0:
+                    shot_fx.play()
+                else:
+                    empty_gun_fx.play()
             if event.key == pygame.K_w and player.alive:
                 player.jump = True
             if event.key == pygame.K_ESCAPE and start_game:

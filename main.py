@@ -12,7 +12,8 @@ sc_height = int(sc_width * 0.8)
 
 screen = pygame.display.set_mode((sc_width, sc_height))
 pygame.display.set_caption('BrainExe')
-
+icon = pygame.image.load("icon.ico")
+pygame.display.set_icon(icon)
 # framerate
 clock = pygame.time.Clock()
 FPS = 60
@@ -30,7 +31,7 @@ bg_scroll = 0
 start_game = False
 start_intro = False
 menu_state = 'main'
-
+ammo = 20
 with open('tuts.txt', 'r') as file:
     contents = file.read().strip()
 
@@ -46,6 +47,8 @@ shot_fx = pygame.mixer.Sound('audio/shoot.mp3')
 shot_fx.set_volume(0.3)
 button_fx = pygame.mixer.Sound('audio/button.mp3')
 button_fx.set_volume(0.3)
+empty_gun_fx = pygame.mixer.Sound('audio/empty-gun.mp3')
+empty_gun_fx.set_volume(0.3)
 
 bgm_load = pygame.mixer.Sound('audio/ost.mp3')
 bgm = bgm_load.play(-1, 0, 500)
@@ -772,7 +775,7 @@ class World():
                         item_box_group.add(item_box)
                     elif tile == 6:
                         player = Player('player', x * TILE_SIZE,
-                                        y * TILE_SIZE, 1, 7, 20)
+                                        y * TILE_SIZE, 1, 7, ammo)
                         health_bar = HPBar(
                             10, 10, player.health, player.health)
                     elif tile == 7:
@@ -851,6 +854,7 @@ class ItemBox(pygame.sprite.Sprite):
         if pygame.sprite.collide_rect(self, player):
             # check what kind of item box
             if self.item_type == 'Ammo':
+                score.add_score(100)
                 player.ammo += 10
             self.kill()
 
@@ -1036,31 +1040,6 @@ class Timer:
         timer_rect.topright = (screen.get_width() - 10, 10)
         screen.blit(timer_text, timer_rect)
 
-    def save_time(self):
-        csv_file = "time_data.csv"
-        # Check if the CSV file exists, create it with a header if it doesn't
-        if not os.path.exists(csv_file):
-            with open(csv_file, 'w', newline='') as csvfile:
-                csv_writer = csv.writer(csvfile)
-                csv_writer.writerow(["id", "time"])
-
-        # Read the CSV file to find the previous id
-        last_id = 0
-        with open(csv_file, 'r', newline='') as csvfile:
-            csv_reader = csv.reader(csvfile)
-            for row in csv_reader:
-                if len(row) > 0 and row[0].isdigit():
-                    last_id = int(row[0])
-
-        # Increment the id
-        new_id = last_id + 1
-
-        # Save the time, id, and death count
-        with open(csv_file, 'a', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(
-                [new_id, f"{self.minutes:02d}:{self.seconds:02d}"])
-
 
 class Score:
     def __init__(self):
@@ -1080,6 +1059,34 @@ class Score:
 
 score = Score()
 time = Timer()
+
+
+def save_time():
+    csv_file = "player_record.csv"
+    # Check if the CSV file exists, create it with a header if it doesn't
+    if not os.path.exists(csv_file):
+        with open(csv_file, 'w', newline='') as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(["id", "time", "score"])
+
+    # Read the CSV file to find the previous id
+    last_id = 0
+    with open(csv_file, 'r', newline='') as csvfile:
+        csv_reader = csv.reader(csvfile)
+        for row in csv_reader:
+            if len(row) > 0 and row[0].isdigit():
+                last_id = int(row[0])
+
+    # Increment the id
+    new_id = last_id + 1
+
+    # Save the time, id, and score
+    with open(csv_file, 'a', newline='') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        csv_writer.writerow(
+            [new_id, f"{time.minutes:02d}:{time.seconds:02d}", score.score])
+
+
 # create screen fades
 intro_fade = ScreenFade(1, BLACK, 15)
 death_fade = ScreenFade(2, PINK, 15)
@@ -1399,7 +1406,10 @@ while run:
                 if level == 0:
                     time.reset()
                     score.score = 0
+                    ammo = 20
                     update_file()
+                else:
+                    ammo = player.ammo
                 level += 1
                 bg_scroll = 0
                 world_data = reset_level()
@@ -1414,9 +1424,11 @@ while run:
                     world = World()
                     player, health_bar = world.process_data(world_data)
                 else:
-                    time.save_time()
+                    ammo = 20
+                    save_time()
                     win_screen()
                     level = 1
+                    score.score = 0
                     m_left = False
                     m_right = False
                     screen_scroll = 0
@@ -1450,6 +1462,8 @@ while run:
                     death_fade.fade_counter = 0
                     start_intro = True
                     bg_scroll = 0
+                    ammo = player.ammo // 2 if player.ammo//2 > 20 else 20
+                    score.score = score.score // 2 if score.score > 100 else 0
                     world_data = reset_level()
                     # load in level data and create world
                     with open(f'levels/level{level}_data.csv', newline='') as csvfile:
@@ -1461,7 +1475,9 @@ while run:
                     player, health_bar = world.process_data(world_data)
                 if back_bttn.draw(screen):
                     level = 1
+                    score.score = 0
                     death_fade.fade_counter = 0
+                    ammo = 20
                     m_left = False
                     m_right = False
                     screen_scroll = 0
@@ -1500,7 +1516,10 @@ while run:
                 m_right = True
             if event.key == pygame.K_SPACE:
                 shoot = True
-                shot_fx.play()
+                if player.ammo > 0:
+                    shot_fx.play()
+                else:
+                    empty_gun_fx.play()
             if event.key == pygame.K_w and player.alive:
                 player.jump = True
             if event.key == pygame.K_ESCAPE and start_game:

@@ -44,18 +44,19 @@ m_right = False
 shoot = False
 
 shot_fx = pygame.mixer.Sound('audio/shoot.mp3')
-shot_fx.set_volume(0.3)
+shot_fx.set_volume(0.15)
 button_fx = pygame.mixer.Sound('audio/button.mp3')
 button_fx.set_volume(0.3)
 empty_gun_fx = pygame.mixer.Sound('audio/empty-gun.mp3')
 empty_gun_fx.set_volume(0.3)
-
+jump_fx = pygame.mixer.Sound('audio/jump.mp3')
+jump_fx.set_volume(10)
 bgm_load = pygame.mixer.Sound('audio/ost.mp3')
 bgm = bgm_load.play(-1, 0, 500)
 pygame.mixer.Sound.set_volume(bgm_load, 0.055)
 bgm_2_load = pygame.mixer.Sound('audio/audio_bgm.mp3')
 bgm_2 = bgm_2_load.play(-1, 0, 500)
-pygame.mixer.Sound.set_volume(bgm_2_load, 0.055)
+pygame.mixer.Sound.set_volume(bgm_2_load, 0.035)
 
 # load images
 # button images
@@ -367,7 +368,7 @@ class Boss(pygame.sprite.Sprite):
         boss.ammo = ammo
         boss.start_ammo = ammo
         boss.shoot_cd = 0
-        boss.health = 1250
+        boss.health = 3000
         boss.max_health = boss.health
         boss.direction = -1
         boss.vel_y = 0
@@ -959,10 +960,8 @@ class Bullet(pygame.sprite.Sprite):
             if pygame.sprite.spritecollide(enemy, bullet_group, False):
                 if enemy.alive:
                     enemy.health -= 50
-                    score.add_score(random.randint(0, 10))
+                    score.add_score(random.randint(10, 1000))
                     self.kill()
-                else:
-                    score.add_score(random.randint(0, 100))
         for enemy_2 in enemy_2_group:
             if pygame.sprite.spritecollide(enemy_2, bullet_group, False):
                 if enemy_2.alive:
@@ -972,10 +971,8 @@ class Bullet(pygame.sprite.Sprite):
             if pygame.sprite.spritecollide(boss, bullet_group, False):
                 if boss.alive:
                     boss.health -= 50
-                    score.add_score(random.randint(0, 100))
-                    self.kill()
-                else:
                     score.add_score(random.randint(100, 1000))
+                    self.kill()
 
 
 class ScreenFade():
@@ -1205,7 +1202,7 @@ def pause_game():
                 sys.exit()
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
+                if event.key == pygame.K_ESCAPE and death_fade.fade_counter == 0:
                     paused = False
                     time.start()
                 if event.key == pygame.K_q:
@@ -1514,15 +1511,16 @@ while run:
                 m_left = True
             if event.key == pygame.K_d:
                 m_right = True
-            if event.key == pygame.K_SPACE:
+            if event.key == pygame.K_SPACE and player.alive:
                 shoot = True
                 if player.ammo > 0:
                     shot_fx.play()
                 else:
                     empty_gun_fx.play()
-            if event.key == pygame.K_w and player.alive:
+            if event.key == pygame.K_w and player.alive and not player.in_air:
+                jump_fx.play()
                 player.jump = True
-            if event.key == pygame.K_ESCAPE and start_game:
+            if event.key == pygame.K_ESCAPE and start_game and death_fade.fade_counter == 0:
                 time.started = not time.started
                 button_fx.play()
                 pause_game()

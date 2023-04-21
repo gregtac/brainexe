@@ -49,10 +49,10 @@ button_fx.set_volume(0.3)
 
 bgm_load = pygame.mixer.Sound('audio/ost.mp3')
 bgm = bgm_load.play(-1, 0, 500)
-pygame.mixer.Sound.set_volume(bgm_load, 0.2)
+pygame.mixer.Sound.set_volume(bgm_load, 0.055)
 bgm_2_load = pygame.mixer.Sound('audio/audio_bgm.mp3')
 bgm_2 = bgm_2_load.play(-1, 0, 500)
-pygame.mixer.Sound.set_volume(bgm_2_load, 0.2)
+pygame.mixer.Sound.set_volume(bgm_2_load, 0.055)
 
 # load images
 # button images
@@ -566,7 +566,7 @@ class Enemy2(pygame.sprite.Sprite):
         enemy2.ammo = ammo
         enemy2.start_ammo = ammo
         enemy2.shoot_cd = 0
-        enemy2.health = 800
+        enemy2.health = 100000
         enemy2.max_health = enemy2.health
         enemy2.direction = -1
         enemy2.vel_y = 0
@@ -955,7 +955,10 @@ class Bullet(pygame.sprite.Sprite):
             if pygame.sprite.spritecollide(enemy, bullet_group, False):
                 if enemy.alive:
                     enemy.health -= 50
+                    score.add_score(random.randint(0, 10))
                     self.kill()
+                else:
+                    score.add_score(random.randint(0, 100))
         for enemy_2 in enemy_2_group:
             if pygame.sprite.spritecollide(enemy_2, bullet_group, False):
                 if enemy_2.alive:
@@ -965,7 +968,10 @@ class Bullet(pygame.sprite.Sprite):
             if pygame.sprite.spritecollide(boss, bullet_group, False):
                 if boss.alive:
                     boss.health -= 50
+                    score.add_score(random.randint(0, 100))
                     self.kill()
+                else:
+                    score.add_score(random.randint(100, 1000))
 
 
 class ScreenFade():
@@ -1056,6 +1062,23 @@ class Timer:
                 [new_id, f"{self.minutes:02d}:{self.seconds:02d}"])
 
 
+class Score:
+    def __init__(self):
+        self.score_font = pygame.font.SysFont(None, 48)
+        self.score = 0
+
+    def add_score(self, value):
+        self.score += value
+
+    def draw(self, screen):
+        score_text = self.score_font.render(
+            f"Score: {self.score}", True, (255, 255, 255))
+        score_rect = score_text.get_rect()
+        score_rect.midtop = (screen.get_width() // 2, 10)
+        screen.blit(score_text, score_rect)
+
+
+score = Score()
 time = Timer()
 # create screen fades
 intro_fade = ScreenFade(1, BLACK, 15)
@@ -1070,7 +1093,7 @@ credits_bttn = button.Button(
     (sc_width//2) + 200, (sc_height - 135), credits_img, .45)
 keys_bttn = button.Button(50, (sc_height - 135), controls_img, .45)
 quit_bttn = button.Button((sc_width//3) + 90, (sc_height - 85), quit_img, .6)
-music_bttn = button.Button(345, 200, music_on_img, .8)
+music_bttn = button.Button(345, 220, music_on_img, .8)
 back_bttn = button.Button(280, 350, back_img, 1)
 done_bttn = button.Button(
     sc_width // 2.8, sc_height - 225, back_img, 1)
@@ -1101,7 +1124,6 @@ def draw_options():
 
 def draw_keys():
     overlay()
-    font = pygame.font.SysFont("arialblack", 70)
     controls = {"Jump": "W", "Left": "A",
                 "Right": "D", "Shoot": "Space", "Pause": "Esc"}
     key_font = pygame.font.SysFont("arialblack", 50)
@@ -1173,16 +1195,13 @@ def pause_game():
                   desc_font, WHITE, (sc_width//10), 300)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
                 sys.exit()
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     paused = False
                     time.start()
-
                 if event.key == pygame.K_q:
-                    pygame.quit()
                     sys.exit()
 
         pygame.display.update()
@@ -1195,14 +1214,17 @@ def win_screen():
 
         overlay()
         title_font = pygame.font.SysFont("arialblack", 70)
-        time_font = pygame.font.SysFont("arialblack", 50)
+        misc_font = pygame.font.SysFont("arialblack", 50)
         desc_font = pygame.font.SysFont("arialblack", 25)
 
         draw_text("Congratulation", title_font, WHITE,
                   (sc_width//10) + 35, (sc_height - 75)//5)
         timer_text = f"Your Time: {time.minutes:02d}:{time.seconds:02d}"
-        draw_text(timer_text, time_font, WHITE,
+        score_text = f"Your Score: {score.score}"
+        draw_text(timer_text, misc_font, WHITE,
                   (sc_width//5) + 15, (sc_height - 75)//3)
+        draw_text(score_text, misc_font, WHITE,
+                  (sc_width + len(score_text))//5, (sc_height + 100)//3)
         draw_text("Press Enter to Return and Q to Quit",
                   desc_font, WHITE, (sc_width//5), (sc_height - 200)//1)
 
@@ -1224,12 +1246,8 @@ def update_file():
         if contents.lower() != 'true':
             file.seek(0)
             file.write('true')
-            file.truncate()
-        else:
-            file.seek(0)
-            file.write('false')
-            file.truncate()
-        file.close()
+        file.truncate()
+        file.flush()
 
 
 # create sprite groups
@@ -1243,8 +1261,6 @@ exit_group = pygame.sprite.Group()
 decoration_group = pygame.sprite.Group()
 
 # temp for create item boxes
-
-
 # create empty tile list
 world_data = []
 for row in range(ROWS):
@@ -1357,7 +1373,7 @@ while run:
 
         time.update()
         time.draw(screen)
-
+        score.draw(screen)
         # show intro
         if start_intro == True:
             if intro_fade.fade():
@@ -1381,6 +1397,8 @@ while run:
             # check if player has completed level
             if level_complete:
                 if level == 0:
+                    time.reset()
+                    score.score = 0
                     update_file()
                 level += 1
                 bg_scroll = 0
@@ -1442,6 +1460,7 @@ while run:
                     world = World()
                     player, health_bar = world.process_data(world_data)
                 if back_bttn.draw(screen):
+                    level = 1
                     death_fade.fade_counter = 0
                     m_left = False
                     m_right = False

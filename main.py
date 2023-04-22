@@ -5,6 +5,18 @@ import csv
 import button
 import sys
 
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS2
+        base_path = sys._MEIPASS2
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
 pygame.init()
 
 sc_width = 800
@@ -12,7 +24,7 @@ sc_height = int(sc_width * 0.8)
 
 screen = pygame.display.set_mode((sc_width, sc_height))
 pygame.display.set_caption('BrainExe')
-icon = pygame.image.load("icon.ico")
+icon = pygame.image.load(resource_path("icon.ico"))
 pygame.display.set_icon(icon)
 # framerate
 clock = pygame.time.Clock()
@@ -43,57 +55,73 @@ m_left = False
 m_right = False
 shoot = False
 
-shot_fx = pygame.mixer.Sound('audio/shoot.mp3')
+shot_fx = pygame.mixer.Sound(resource_path('audio\\shoot.mp3'))
 shot_fx.set_volume(0.15)
-button_fx = pygame.mixer.Sound('audio/button.mp3')
+button_fx = pygame.mixer.Sound(resource_path('audio\\button.mp3'))
 button_fx.set_volume(0.3)
-empty_gun_fx = pygame.mixer.Sound('audio/empty-gun.mp3')
+empty_gun_fx = pygame.mixer.Sound(resource_path('audio\\empty-gun.mp3'))
 empty_gun_fx.set_volume(0.3)
-jump_fx = pygame.mixer.Sound('audio/jump.mp3')
+jump_fx = pygame.mixer.Sound(resource_path('audio\\jump.mp3'))
 jump_fx.set_volume(10)
-bgm_load = pygame.mixer.Sound('audio/ost.mp3')
+bgm_load = pygame.mixer.Sound(resource_path('audio\\ost.mp3'))
 bgm = bgm_load.play(-1, 0, 500)
 pygame.mixer.Sound.set_volume(bgm_load, 0.055)
-bgm_2_load = pygame.mixer.Sound('audio/audio_bgm.mp3')
+bgm_2_load = pygame.mixer.Sound(resource_path('audio\\audio_bgm.mp3'))
 bgm_2 = bgm_2_load.play(-1, 0, 500)
 pygame.mixer.Sound.set_volume(bgm_2_load, 0.035)
 
 # load images
 # button images
-start_img = pygame.image.load('imgs/menu/start_button.png').convert_alpha()
-options_img = pygame.image.load('imgs/menu/options_button.png').convert_alpha()
-credits_img = pygame.image.load('imgs/menu/credits_button.png').convert_alpha()
-quit_img = pygame.image.load('imgs/menu/quit_button.png').convert_alpha()
-back_img = pygame.image.load('imgs/menu/back_button.png').convert_alpha()
-controls_img = pygame.image.load(
-    'imgs/menu/controls_button.png').convert_alpha()
-restart_img = pygame.image.load('imgs/menu/restart_button.png').convert_alpha()
-credits_img = pygame.image.load('imgs/menu/credits_button.png').convert_alpha()
-menu_img = pygame.image.load('imgs/menu/menu_button.png').convert_alpha()
-music_on_img = pygame.image.load('imgs/menu/music_button.png').convert_alpha()
-music_off_img = pygame.image.load(
-    'imgs/menu/music_button_off.png').convert_alpha()
+start_img = pygame.image.load(resource_path(
+    'imgs\\menu\\start_button.png')).convert_alpha()
+options_img = pygame.image.load(resource_path(
+    'imgs\\menu\\options_button.png')).convert_alpha()
+credits_img = pygame.image.load(resource_path(
+    'imgs\\menu\\credits_button.png')).convert_alpha()
+quit_img = pygame.image.load(resource_path(
+    'imgs\\menu\\quit_button.png')).convert_alpha()
+back_img = pygame.image.load(resource_path(
+    'imgs\\menu\\back_button.png')).convert_alpha()
+controls_img = pygame.image.load(resource_path(
+    'imgs\\menu\\controls_button.png')).convert_alpha()
+restart_img = pygame.image.load(resource_path(
+    'imgs\\menu\\restart_button.png')).convert_alpha()
+credits_img = pygame.image.load(resource_path(
+    'imgs\\menu\\credits_button.png')).convert_alpha()
+menu_img = pygame.image.load(resource_path(
+    'imgs\\menu\\menu_button.png')).convert_alpha()
+music_on_img = pygame.image.load(resource_path(
+    'imgs\\menu\\music_button.png')).convert_alpha()
+music_off_img = pygame.image.load(resource_path(
+    'imgs\\menu\\music_button_off.png')).convert_alpha()
 # background
-veins_img = pygame.image.load('imgs/bg/veins.png').convert_alpha()
-vessels_img = pygame.image.load('imgs/bg/vessels.png').convert_alpha()
-blood_img = pygame.image.load('imgs/bg/blood.png').convert_alpha()
+veins_img = pygame.image.load(resource_path(
+    'imgs\\bg\\veins.png')).convert_alpha()
+vessels_img = pygame.image.load(resource_path(
+    'imgs\\bg\\vessels.png')).convert_alpha()
+blood_img = pygame.image.load(resource_path(
+    'imgs\\bg\\blood.png')).convert_alpha()
 # store tiles in a list
 img_list = []
 for x in range(TILE_TYPES):
-    img = pygame.image.load(f'imgs/tile/{x}.png')
+    img = pygame.image.load(resource_path(f'imgs\\tile\\{x}.png'))
     img = pygame.transform.scale(img, (TILE_SIZE, TILE_SIZE))
     img_list.append(img)
 # bullet
-bullet_img = pygame.image.load('imgs/icons/bullet1.png').convert_alpha()
-bullet2_img = pygame.image.load('imgs/icons/bullet2.png').convert_alpha()
-bullet3_img = pygame.image.load('imgs/icons/bullet3.png').convert_alpha()
+bullet_img = pygame.image.load(resource_path(
+    'imgs\\icons\\bullet1.png')).convert_alpha()
+bullet2_img = pygame.image.load(resource_path(
+    'imgs\\icons\\bullet2.png')).convert_alpha()
+bullet3_img = pygame.image.load(resource_path(
+    'imgs\\icons\\bullet3.png')).convert_alpha()
 # pick up boxes
-ammo_box_img = pygame.image.load('imgs/icons/ammo.png').convert_alpha()
+ammo_box_img = pygame.image.load(
+    resource_path('imgs\\icons\\ammo.png')).convert_alpha()
 item_boxes = {
     'Ammo': ammo_box_img
 }
 
-background = pygame.image.load('./imgs/title_screen.png')
+background = pygame.image.load(resource_path('imgs\\title_screen.png'))
 background = pygame.transform.scale(background, (sc_width, sc_height))
 # colors
 BG = (144, 201, 120)
@@ -1059,7 +1087,7 @@ time = Timer()
 
 
 def save_time():
-    csv_file = "player_record.csv"
+    csv_file = resource_path("player_record.csv")
     # Check if the CSV file exists, create it with a header if it doesn't
     if not os.path.exists(csv_file):
         with open(csv_file, 'w', newline='') as csvfile:
@@ -1245,7 +1273,7 @@ def win_screen():
 
 
 def update_file():
-    with open('tuts.txt', 'r+') as file:
+    with open(resource_path('tuts.txt'), 'r+') as file:
         contents = file.read().strip()
         if contents.lower() != 'true':
             file.seek(0)
@@ -1271,7 +1299,7 @@ for row in range(ROWS):
     r = [-1] * COLS
     world_data.append(r)
 # load in level data and create world
-with open(f'levels/level{level}_data.csv', newline='') as csvfile:
+with open(resource_path(f'levels\\level{level}_data.csv'), newline='') as csvfile:
     reader = csv.reader(csvfile, delimiter=',')
     for x, row in enumerate(reader):
         for y, tile in enumerate(row):
@@ -1413,7 +1441,7 @@ while run:
                 if level <= max_levels:
                     start_intro = True
                     # load in level data and create world
-                    with open(f'levels/level{level}_data.csv', newline='') as csvfile:
+                    with open(resource_path(f'levels\\level{level}_data.csv'), newline='') as csvfile:
                         reader = csv.reader(csvfile, delimiter=',')
                         for x, row in enumerate(reader):
                             for y, tile in enumerate(row):
@@ -1435,7 +1463,7 @@ while run:
                         r = [-1] * COLS
                         world_data.append(r)
                     # load in level data and create world
-                    with open(f'levels/level{level}_data.csv', newline='') as csvfile:
+                    with open(resource_path(f'levels\\level{level}_data.csv'), newline='') as csvfile:
                         reader = csv.reader(csvfile, delimiter=',')
                         for x, row in enumerate(reader):
                             for y, tile in enumerate(row):
@@ -1463,7 +1491,7 @@ while run:
                     score.score = score.score // 2 if score.score > 100 else 0
                     world_data = reset_level()
                     # load in level data and create world
-                    with open(f'levels/level{level}_data.csv', newline='') as csvfile:
+                    with open(resource_path(f'levels\\level{level}_data.csv'), newline='') as csvfile:
                         reader = csv.reader(csvfile, delimiter=',')
                         for x, row in enumerate(reader):
                             for y, tile in enumerate(row):
@@ -1484,7 +1512,7 @@ while run:
                         r = [-1] * COLS
                         world_data.append(r)
                     # load in level data and create world
-                    with open(f'levels/level{level}_data.csv', newline='') as csvfile:
+                    with open(resource_path(f'levels\\level{level}_data.csv'), newline='') as csvfile:
                         reader = csv.reader(csvfile, delimiter=',')
                         for x, row in enumerate(reader):
                             for y, tile in enumerate(row):

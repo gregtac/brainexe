@@ -162,6 +162,7 @@ def reset_level():
     thorn_group.empty()
     exit_group.empty()
     decoration_group.empty()
+    animated_group.empty()
 
     # create empty tile list
     data = []
@@ -388,20 +389,18 @@ class Player(pygame.sprite.Sprite):
 
 
 class Boss(pygame.sprite.Sprite):
-    def __init__(boss, char_type, x, y, scale, speed, ammo):
+    def __init__(boss, char_type, x, y, scale, speed):
         pygame.sprite.Sprite.__init__(boss)
         boss.alive = True
         boss.char_type = char_type
         boss.speed = speed
-        boss.ammo = ammo
+        boss.ammo = 9999
         boss.start_ammo = ammo
         boss.shoot_cd = 0
         boss.health = 3000
         boss.max_health = boss.health
         boss.direction = -1
         boss.vel_y = 0
-        boss.jump = False
-        boss.in_air = True
         boss.flip = False
         boss.animation_list = []
         boss.frame_index = 0
@@ -441,84 +440,6 @@ class Boss(pygame.sprite.Sprite):
         # update cooldown
         if boss.shoot_cd > 0:
             boss.shoot_cd -= 1
-
-    def move(boss, m_left, m_right):
-        # reset movement variables
-        screen_scroll = 0
-        dx = 0
-        dy = 0
-        # movement variables
-        if m_left:
-            dx = -boss.speed
-            boss.flip = True
-            boss.direction = -1
-        if m_right:
-            dx = boss.speed
-            boss.flip = False
-            boss.direction = 1
-
-        # jump
-        if boss.jump == True and boss.in_air == False:
-            boss.vel_y = -14
-            boss.jump = False
-            boss.in_air = True
-
-        # apply gravity
-        boss.vel_y += gravity
-        if boss.vel_y > 14:
-            boss.vel_y
-        dy += boss.vel_y
-
-        # check for collision
-        for tile in world.obstacle_list:
-            # check collision in the x direction
-            if tile[1].colliderect(boss.rect.x + dx, boss.rect.y, boss.width, boss.height):
-                dx = 0
-                # if the ai has hit a wall, turn around
-                if boss.char_type == 'boss':
-                    boss.direction *= -1
-                    boss.move_counter = 0
-            # check for collision in the y direction
-            if tile[1].colliderect(boss.rect.x, boss.rect.y + dy, boss.width, boss.height):
-                # check if below the ground; jumping
-                if boss.vel_y < 0:
-                    boss.vel_y = 0
-                    dy = tile[1].bottom - boss.rect.top
-                # check if above ground; falling
-                elif boss.vel_y >= 0:
-                    boss.vel_y = 0
-                    boss.in_air = False
-                    dy = tile[1].top - boss.rect.bottom
-
-        # check for collision with spike
-        if pygame.sprite.spritecollide(boss, thorn_group, False):
-            boss.health = 0
-
-        level_complete = False
-        if pygame.sprite.spritecollide(boss, exit_group, False):
-            level_complete = True
-
-        # check if fallen off map
-        if boss.rect.bottom > sc_height:
-            boss.health = 0
-
-        # check if going off screen
-        if boss.char_type == 'player':
-            if boss.rect.left + dx < 0 or boss.rect.right + dx > sc_width:
-                dx = 0
-
-        # update rect position
-        boss.rect.x += dx
-        boss.rect.y += dy
-
-        # update scroll based on player position
-        if boss.char_type == 'player':
-            if (boss.rect.right > sc_width - SCROLL_THRESH and bg_scroll < (world.level_length * TILE_SIZE) - sc_width)\
-                    or (boss.rect.left < SCROLL_THRESH and bg_scroll > abs(dx)):
-                boss.rect.x -= dx
-                screen_scroll = -dx
-
-        return screen_scroll, level_complete
 
     def shoot(boss):
         if boss.shoot_cd == 0 and boss.ammo > 0:
@@ -590,20 +511,18 @@ class Boss(pygame.sprite.Sprite):
 
 
 class Enemy2(pygame.sprite.Sprite):
-    def __init__(enemy2, char_type, x, y, scale, speed, ammo):
+    def __init__(enemy2, char_type, x, y, scale, speed):
         pygame.sprite.Sprite.__init__(enemy2)
         enemy2.alive = True
         enemy2.char_type = char_type
         enemy2.speed = speed
         enemy2.ammo = ammo
-        enemy2.start_ammo = ammo
+        enemy2.start_ammo = 9999
         enemy2.shoot_cd = 0
         enemy2.health = 100000
         enemy2.max_health = enemy2.health
         enemy2.direction = -1
         enemy2.vel_y = 0
-        enemy2.jump = False
-        enemy2.in_air = True
         enemy2.flip = False
         enemy2.animation_list = []
         enemy2.frame_index = 0
@@ -659,12 +578,6 @@ class Enemy2(pygame.sprite.Sprite):
             enemy2.flip = False
             enemy2.direction = 1
 
-        # jump
-        if enemy2.jump == True and enemy2.in_air == False:
-            enemy2.vel_y = -14
-            enemy2.jump = False
-            enemy2.in_air = True
-
         # apply gravity
         enemy2.vel_y += gravity
         if enemy2.vel_y > 14:
@@ -693,7 +606,7 @@ class Enemy2(pygame.sprite.Sprite):
                     dy = tile[1].top - enemy2.rect.bottom
 
         # check if going off screen
-        if enemy2.char_type == 'player':
+        if enemy2.char_type == 'enemy_2':
             if enemy2.rect.left + dx < 0 or enemy2.rect.right + dx > sc_width:
                 dx = 0
 
@@ -813,11 +726,11 @@ class World():
                         enemy_group.add(enemy)
                     elif tile == 8:
                         enemy_2 = Enemy2('enemy_2', x * TILE_SIZE,
-                                         y * TILE_SIZE, 1, 3, 9999)
+                                         y * TILE_SIZE, 1, 3)
                         enemy_2_group.add(enemy_2)
                     elif tile == 9:
                         boss = Boss('boss', x * TILE_SIZE,
-                                    y * TILE_SIZE, 1, 3, 9999)
+                                    y * TILE_SIZE, 1, 3)
                         boss_group.add(boss)
                     elif tile == 10:  # create exit
                         exit = Exit(img, x * TILE_SIZE, y * TILE_SIZE)
@@ -875,6 +788,7 @@ class ItemBox(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.midtop = (x + TILE_SIZE // 2, y +
                             (TILE_SIZE - self.image.get_height()))
+        self.picked_up = False
 
     def update(self):
         # scroll
@@ -882,9 +796,36 @@ class ItemBox(pygame.sprite.Sprite):
         # check if player has picked up item
         if pygame.sprite.collide_rect(self, player):
             # check what kind of item box
-            if self.item_type == 'Ammo':
+            if self.item_type == 'Ammo' and not self.picked_up:
                 score.add_score(100)
+                animated_text = AnimatedText(
+                    "Ammo +10", player.rect.centerx, player.rect.y - 20, 50)
+                # Add the animated text to the sprite group
+                animated_group.add(animated_text)
                 player.ammo += 10
+                self.picked_up = True
+                self.kill()
+
+
+class AnimatedText(pygame.sprite.Sprite):
+    def __init__(self, text, x, y, duration):
+        pygame.sprite.Sprite.__init__(self)
+        self.font = pygame.font.Font(None, 25)
+        self.text = text
+        self.image = self.font.render(self.text, True, WHITE)
+        self.rect = self.image.get_rect(center=(x, y))
+        self.duration = duration
+        self.alpha = 255
+        self.alpha_step = self.alpha // self.duration
+        self.ticks = 0
+
+    def update(self):
+        self.rect.y -= 1
+        self.alpha -= self.alpha_step
+        self.image = self.font.render(self.text, True, WHITE)
+        self.image.set_alpha(self.alpha)
+        self.ticks += 1
+        if self.ticks >= self.duration:
             self.kill()
 
 
@@ -1085,33 +1026,6 @@ class Score:
 score = Score()
 time = Timer()
 
-
-def save_time():
-    csv_file = resource_path("player_record.csv")
-    # Check if the CSV file exists, create it with a header if it doesn't
-    if not os.path.exists(csv_file):
-        with open(csv_file, 'w', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(["id", "time", "score"])
-
-    # Read the CSV file to find the previous id
-    last_id = 0
-    with open(csv_file, 'r', newline='') as csvfile:
-        csv_reader = csv.reader(csvfile)
-        for row in csv_reader:
-            if len(row) > 0 and row[0].isdigit():
-                last_id = int(row[0])
-
-    # Increment the id
-    new_id = last_id + 1
-
-    # Save the time, id, and score
-    with open(csv_file, 'a', newline='') as csvfile:
-        csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(
-            [new_id, f"{time.minutes:02d}:{time.seconds:02d}", score.score])
-
-
 # create screen fades
 intro_fade = ScreenFade(1, BLACK, 15)
 death_fade = ScreenFade(2, PINK, 15)
@@ -1143,10 +1057,17 @@ def overlay():
 # This one just draw the "Settings" text on option screen
 
 
-def draw_options():
+def draw_options(select):
     # draw the different options buttons
-    font = pygame.font.SysFont("arialblack", 70)
-    option_title = font.render("Settings", True, WHITE)
+    if select == 0:
+        text = "Settings"
+        style = "arialblack"
+    else:
+        text = "You Died"
+        style = "jokerman"
+
+    font = pygame.font.SysFont(style, 70)
+    option_title = font.render(text, True, WHITE)
     option_rect = option_title.get_rect()
     option_rect = ((sc_width//3) - 25, (sc_height - 75)//7)
     screen.blit(option_title, option_rect)
@@ -1291,6 +1212,7 @@ boss_group = pygame.sprite.Group()
 thorn_group = pygame.sprite.Group()
 exit_group = pygame.sprite.Group()
 decoration_group = pygame.sprite.Group()
+animated_group = pygame.sprite.Group()
 
 # temp for create item boxes
 # create empty tile list
@@ -1342,7 +1264,7 @@ while run:
         # check if the options menu is open
         if menu_state == "options":  # NOTE: 2) This window will appear
             overlay()  # this will create a semi-transparent back-drop
-            draw_options()  # "Settings" title
+            draw_options(0)  # "Settings" title
             if music_bttn.draw(screen):
                 # change the value either True or False
                 music_is_toggled = not music_is_toggled
@@ -1397,6 +1319,8 @@ while run:
         bullet_group.update()
         bullet_group.draw(screen)
         item_box_group.update()
+        animated_group.update()
+        animated_group.draw(screen)
         item_box_group.draw(screen)
         thorn_group.update()
         thorn_group.draw(screen)
@@ -1450,7 +1374,6 @@ while run:
                     player, health_bar = world.process_data(world_data)
                 else:
                     ammo = 20
-                    save_time()
                     win_screen()
                     level = 1
                     score.score = 0
@@ -1482,6 +1405,7 @@ while run:
         else:
             screen_scroll = 0
             if death_fade.fade():
+                draw_options(1)
                 if restart_button.draw(screen):
                     time.start()
                     death_fade.fade_counter = 0

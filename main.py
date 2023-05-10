@@ -94,6 +94,9 @@ music_on_img = pygame.image.load(resource_path(
     'imgs\\menu\\music_button.png')).convert_alpha()
 music_off_img = pygame.image.load(resource_path(
     'imgs\\menu\\music_button_off.png')).convert_alpha()
+info_img = pygame.image.load(resource_path(
+    'imgs\\menu\\info_button.png')).convert_alpha()
+
 # background
 veins_img = pygame.image.load(resource_path(
     'imgs\\bg\\veins.png')).convert_alpha()
@@ -1045,6 +1048,8 @@ done_bttn = button.Button(
     sc_width // 2.8, sc_height - 225, back_img, 1)
 restart_button = button.Button(
     sc_width // 2 - 210, sc_height // 2 - 100, restart_img, 1)
+info_button = button.Button(
+    sc_width - 50, sc_height - 50, info_img, .5)
 
 
 def overlay():
@@ -1055,6 +1060,44 @@ def overlay():
     screen.blit(overlay, (0, 0))
 
 # This one just draw the "Settings" text on option screen
+
+
+def draw_info():
+    overlay()
+    margin = 20
+    info_width = sc_width - 2 * margin
+
+    font_title = pygame.font.SysFont("arialblack", 70)
+    info_title = font_title.render("Overview", True, WHITE)
+    info_rect = info_title.get_rect()
+    info_rect.center = (sc_width//2, margin + info_rect.height//2)
+    screen.blit(info_title, info_rect)
+
+    content = "\"BrainExe\" is a 2D shooter platformer game that aims to improve the player's cognitive skills. The player needs to race against themselves to get the lowest possible time of clearing the game."
+    font_content = pygame.font.SysFont("arialblack", 30)
+    lines = wrap_text(content, font_content, info_width)
+    y = margin + info_rect.height + margin - 10
+    for line in lines:
+        info_content = font_content.render(line, True, WHITE)
+        info_content_rect = info_content.get_rect()
+        info_content_rect.center = (
+            sc_width//2, y + info_content_rect.height//2)
+        screen.blit(info_content, info_content_rect)
+        y += info_content_rect.height + 10
+
+
+def wrap_text(text, font, max_width):
+    words = text.split()
+    lines = []
+    current_line = words[0]
+    for word in words[1:]:
+        if font.size(current_line + ' ' + word)[0] <= max_width:
+            current_line += ' ' + word
+        else:
+            lines.append(current_line)
+            current_line = word
+    lines.append(current_line)
+    return lines
 
 
 def draw_options(select):
@@ -1257,6 +1300,10 @@ while run:
         if keys_bttn.draw(screen):
             button_fx.play()
             menu_state = "keys"
+        if info_button.draw(screen):
+            button_fx.play()
+            menu_state = "info"
+
         if quit_bttn.draw(screen):
             button_fx.play()
             run = False
@@ -1273,7 +1320,11 @@ while run:
             if back_bttn.draw(screen):
                 button_fx.play()
                 menu_state = "main"
-
+        if menu_state == "info":
+            draw_info()
+            if done_bttn.draw(screen):
+                button_fx.play()
+                menu_state = "main"
         if menu_state == "keys":  # keybind window
             draw_keys()
             if done_bttn.draw(screen):

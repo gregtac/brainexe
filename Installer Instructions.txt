@@ -1,0 +1,6 @@
+https://drive.google.com/drive/folders/1aKHcpfq1LKIjpSAJUxKmb4r5Qj29jYq_
+
+1. Download the installer "BrainExe_WINDOWS_v2.10.5_setup.exe"
+2. Run the installer as an administrator
+3. Start the "BrainExe.exe" game
+4. Enjoy!
